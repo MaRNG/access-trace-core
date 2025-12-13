@@ -3,8 +3,6 @@
 namespace App;
 
 use Contributte\Bootstrap\ExtraConfigurator;
-use Nette\DI\Compiler;
-use Tracy\Debugger;
 
 class Bootstrap
 {

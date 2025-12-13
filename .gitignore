@@ -1,3 +1,5 @@
 config/local.neon
 vendor/*
 vendor
+.puzzle.history.json
+.aider*

@@ -2,7 +2,9 @@
 
 namespace App\Api\Controller\V1;
 
-class BaseV1Controller
+use App\Api\Controller\BaseController;
+
+abstract class BaseV1Controller extends BaseController
 {
 
 }

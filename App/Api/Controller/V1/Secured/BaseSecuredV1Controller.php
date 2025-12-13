@@ -2,7 +2,10 @@
 
 namespace App\Api\Controller\V1\Secured;
 
-class BaseSecuredV1Controller
+use Apitte\Core\Annotation\Controller\Path;
+use App\Api\Controller\V1\BaseV1Controller;
+
+abstract class BaseSecuredV1Controller extends BaseV1Controller
 {
 
 }

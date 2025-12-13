@@ -1,5 +1,5 @@
-<?php
-declare(strict_types = 1);
+#!/usr/bin/env php
+<?php declare(strict_types = 1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -8,4 +8,4 @@ $configurator = App\Bootstrap::boot();
 $container = $configurator->createContainer();
 
 // Run application.
-$container->getByType(Contributte\Middlewares\Application\IApplication::class)->run();
+$container->getByType(Symfony\Component\Console\Application::class)->run();

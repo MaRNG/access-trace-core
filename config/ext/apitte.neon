@@ -1,0 +1,32 @@
+extensions:
+	middlewares: Contributte\Middlewares\DI\MiddlewaresExtension
+	api: Apitte\Core\DI\ApiExtension
+
+api:
+	debug: %debugMode%
+	plugins:
+		Apitte\Core\DI\Plugin\CoreSchemaPlugin:
+		Apitte\Core\DI\Plugin\CoreServicesPlugin:
+		Apitte\Debug\DI\DebugPlugin:
+		Apitte\Middlewares\DI\MiddlewaresPlugin:
+			tracy: false
+			autobasepath: true
+		Apitte\OpenApi\DI\OpenApiPlugin:
+			swaggerUi:
+				panel: true
+
+services:
+	middleware.tryCatch:
+		factory: Contributte\Middlewares\TryCatchMiddleware
+		tags: [middleware: [priority: 1]]
+		setup:
+			- setDebugMode(%debugMode%)
+			- setCatchExceptions(%productionMode%) # used in debug only
+			- setLogger(@Psr\Log\LoggerInterface, Psr\Log\LogLevel::ERROR)
+	middlewares.logging:
+		factory: Contributte\Middlewares\LoggingMiddleware
+		arguments: [@monolog.logger.default]
+		tags: [middleware: [priority: 100]]
+	middleware.methodOverride:
+		factory: Contributte\Middlewares\MethodOverrideMiddleware
+		tags: [middleware: [priority: 150]]

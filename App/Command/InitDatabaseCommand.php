@@ -11,10 +11,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'logs:init-db', description: 'Initialize SQLite database schema for logs')]
-class InitDatabaseCommand extends Command
+final class InitDatabaseCommand extends Command
 {
 	public function __construct(
-		private Explorer $database
+		private readonly Explorer $database
 	) {
 		parent::__construct();
 	}
@@ -44,6 +44,7 @@ class InitDatabaseCommand extends Command
 					from_time DATETIME,
 					to_time DATETIME,
 					entries_total INTEGER DEFAULT 0,
+					is_processed INTEGER DEFAULT 0,
 					FOREIGN KEY (project_id) REFERENCES project(id)
 				)
 			');

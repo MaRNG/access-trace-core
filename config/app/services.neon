@@ -1,5 +1,9 @@
 services:
     - App\Model\Log\LogImporter
+    database.default.connection:
+        setup:
+            - query('PRAGMA journal_mode=WAL;')
+            - query('PRAGMA synchronous=NORMAL;')
 
 search:
     -

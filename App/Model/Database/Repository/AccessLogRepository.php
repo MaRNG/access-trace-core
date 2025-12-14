@@ -7,7 +7,7 @@ namespace App\Model\Database\Repository;
 use Nette\Database\Explorer;
 use Nette\Database\Table\ActiveRow;
 
-class AccessLogRepository
+final readonly class AccessLogRepository
 {
 	private const TABLE = 'access_log';
 
@@ -23,6 +23,7 @@ class AccessLogRepository
 			'filename' => $filename,
 			'imported_at' => new \DateTimeImmutable(),
 			'entries_total' => 0,
+			'is_processed' => 0,
 		]);
 	}
 
@@ -34,6 +35,15 @@ class AccessLogRepository
 				'entries_total' => $total,
 				'from_time' => $from,
 				'to_time' => $to,
+			]);
+	}
+
+	public function markAsProcessed(int $id): void
+	{
+		$this->database->table(self::TABLE)
+			->where('id', $id)
+			->update([
+				'is_processed' => 1,
 			]);
 	}
 }

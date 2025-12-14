@@ -13,143 +13,242 @@ use Nette\Utils\Strings;
 
 final readonly class LogImporter
 {
-	// Regex to parse Common Log Format / Combined Log Format
-	// Matches: IP, Date, Method, URL, Status, Bytes (ignored), Referer, UA
-	private const LOG_REGEX = '/^(\S+) \S+ \S+ \[([^\]]+)\] "([A-Z]+) (.+?) HTTP\/[0-9.]+" (\d+) \d+ "([^"]*)" "([^"]*)"/';
+    private const BATCH_SIZE = 100;
 
-	public function __construct(
-		private Explorer $database,
-		private ProjectRepository $projectRepository,
-		private AccessLogRepository $accessLogRepository,
-		private LogEntryRepository $logEntryRepository
-	) {
-	}
+    // Regex to parse Common Log Format / Combined Log Format
+    // Matches: IP, Date, Method, URL, Status, Bytes (ignored), Referer, UA
+    private const LOG_REGEX = '/^(\S+) \S+ \S+ \[([^\]]+)\] "([A-Z]+) (.+?) HTTP\/[0-9.]+" (\d+) \d+ "([^"]*)" "([^"]*)"/';
 
-	/**
-	 * @param string $pathPattern Glob pattern for files
-	 * @param string $projectName
-	 * @param bool $dryRun
-	 * @return \Generator<string> Yields status messages
-	 */
-	public function import(string $pathPattern, string $projectName, bool $dryRun = false): \Generator
-	{
-		$files = glob($pathPattern);
+    public function __construct(
+        private Explorer            $database,
+        private ProjectRepository   $projectRepository,
+        private AccessLogRepository $accessLogRepository,
+        private LogEntryRepository  $logEntryRepository
+    )
+    {
+    }
 
-		if ($files === false || count($files) === 0) {
-			yield "No files found matching pattern: $pathPattern";
-			return;
-		}
+    /**
+     * @param string $pathPattern Glob pattern for files
+     * @param string $projectName
+     * @param bool $dryRun
+     * @param callable(int $current, int $total, string $file, ?float $eta): void|null $onProgress
+     */
+    public function import(string $pathPattern, string $projectName, bool $dryRun = false, ?callable $onProgress = null): void
+    {
+        $files = glob($pathPattern);
 
-		// Ensure project exists
-		$project = $this->projectRepository->getOrCreate($projectName);
-		yield "Project: {$project->name} (ID: {$project->id})";
+        if ($files === false || count($files) === 0)
+        {
+            return;
+        }
 
-		foreach ($files as $file) {
-			if (!is_file($file) || !is_readable($file)) {
-				yield "Skipping unreadable file: $file";
-				continue;
-			}
+        // Ensure project exists
+        $project = $this->projectRepository->getOrCreate($projectName);
 
-			yield "Processing file: $file";
-			$this->processFile($file, $project->id, $dryRun);
-		}
-	}
+        foreach ($files as $file)
+        {
+            if (!is_file($file) || !is_readable($file))
+            {
+                continue;
+            }
 
-	private function processFile(string $filePath, int $projectId, bool $dryRun): void
-	{
-		$handle = fopen($filePath, 'r');
-		if (!$handle) {
-			return;
-		}
+            $this->processFile($file, $project->id, $dryRun, $onProgress);
+        }
+    }
 
-		$this->database->beginTransaction();
+    /**
+     * @param callable(int $current, int $total, string $file, ?float $eta): void|null $onProgress
+     */
+    private function processFile(string $filePath, int $projectId, bool $dryRun, ?callable $onProgress): void
+    {
+        $handle = fopen($filePath, 'r');
+        if (!$handle)
+        {
+            return;
+        }
 
-		try {
-			// Create Access Log record
-			$accessLog = $this->accessLogRepository->create($projectId, basename($filePath));
-			$accessLogId = $accessLog->id;
+        $totalLines = $this->countLines($filePath);
+        $processedLines = 0;
+        $startTime = microtime(true);
 
-			$count = 0;
-			$firstTime = null;
-			$lastTime = null;
+        if ($onProgress)
+        {
+            $onProgress(0, $totalLines, $filePath, null);
+        }
 
-			while (($line = fgets($handle)) !== false) {
-				$entry = $this->parseLine($line);
+        try
+        {
+            $accessLogId = null;
+            if (!$dryRun)
+            {
+                // Create Access Log record
+                $accessLog = $this->accessLogRepository->create($projectId, basename($filePath));
+                $accessLogId = $accessLog->id;
+            }
 
-				if ($entry) {
-					if (!$dryRun) {
-						$this->logEntryRepository->insert($accessLogId, $entry);
-					}
+            $count = 0;
+            $firstTime = null;
+            $lastTime = null;
+            $buffer = [];
 
-					// Update stats
-					$count++;
-					if ($firstTime === null || $entry->datetime < $firstTime) {
-						$firstTime = $entry->datetime;
-					}
-					if ($lastTime === null || $entry->datetime > $lastTime) {
-						$lastTime = $entry->datetime;
-					}
-				}
-			}
+            while (($line = fgets($handle)) !== false)
+            {
+                $processedLines++;
+                if ($onProgress && ($processedLines % 100 === 0 || $processedLines === $totalLines))
+                {
+                    $eta = null;
+                    $elapsed = microtime(true) - $startTime;
+                    if ($elapsed > 0 && $processedLines > 0)
+                    {
+                        $rate = $processedLines / $elapsed;
+                        $remaining = $totalLines - $processedLines;
+                        $eta = $remaining / $rate;
+                    }
+                    $onProgress($processedLines, $totalLines, $filePath, $eta);
+                }
 
-			if (!$dryRun) {
-				$this->accessLogRepository->updateStats($accessLogId, $count, $firstTime, $lastTime);
-				$this->database->commit();
-			} else {
-				$this->database->rollBack(); // Rollback in dry-run to clean up access_log entry
-			}
+                $entry = $this->parseLine($line);
 
-		} catch (\Throwable $e) {
-			$this->database->rollBack();
-			throw $e;
-		} finally {
-			fclose($handle);
-		}
-	}
+                if ($entry)
+                {
+                    // Update stats
+                    $count++;
+                    if ($firstTime === null || $entry->datetime < $firstTime)
+                    {
+                        $firstTime = $entry->datetime;
+                    }
+                    if ($lastTime === null || $entry->datetime > $lastTime)
+                    {
+                        $lastTime = $entry->datetime;
+                    }
 
-	private function parseLine(string $line): ?LogEntryDto
-	{
-		$match = Strings::match($line, self::LOG_REGEX);
+                    if (!$dryRun)
+                    {
+                        $buffer[] = $entry;
+                        if (count($buffer) >= self::BATCH_SIZE)
+                        {
+                            $this->database->beginTransaction();
+                            try
+                            {
+                                $this->logEntryRepository->insertMany($accessLogId, $buffer);
+                                $this->accessLogRepository->updateStats($accessLogId, $count, $firstTime, $lastTime);
+                                $this->database->commit();
+                            } catch (\Throwable $e)
+                            {
+                                $this->database->rollBack();
+                                throw $e;
+                            }
+                            $buffer = [];
+                        }
+                    }
+                }
+            }
 
-		if (!$match) {
-			return null;
-		}
+            if (!$dryRun)
+            {
+                if (count($buffer) > 0)
+                {
+                    $this->database->beginTransaction();
+                    try
+                    {
+                        $this->logEntryRepository->insertMany($accessLogId, $buffer);
+                        $this->accessLogRepository->updateStats($accessLogId, $count, $firstTime, $lastTime);
+                        $this->database->commit();
+                    } catch (\Throwable $e)
+                    {
+                        $this->database->rollBack();
+                        throw $e;
+                    }
+                }
+                $this->accessLogRepository->markAsProcessed($accessLogId);
+            }
 
-		// $match indices:
-		// 1: IP
-		// 2: Date [30/May/2025:15:40:26 +0200]
-		// 3: Method
-		// 4: Full Path (URI)
-		// 5: Status
-		// 6: Referer
-		// 7: User Agent
+        } catch (\Throwable $e)
+        {
+            throw $e;
+        } finally
+        {
+            fclose($handle);
+        }
+    }
 
-		$fullUrl = $match[4];
-		$parsedUrl = parse_url($fullUrl);
-		$path = $parsedUrl['path'] ?? '';
-		$query = $parsedUrl['query'] ?? null;
+    private function countLines(string $filePath): int
+    {
+        $handle = fopen($filePath, 'r');
+        if (!$handle)
+        {
+            return 0;
+        }
 
-		// Filter: Only .php or no extension
-		$extension = pathinfo($path, PATHINFO_EXTENSION);
-		if ($extension !== '' && $extension !== 'php') {
-			return null; // Skip assets (css, js, images, etc.)
-		}
+        $lines = 0;
+        $lastChar = "\n";
 
-		// Parse Date
-		$date = \DateTimeImmutable::createFromFormat('d/M/Y:H:i:s O', $match[2]);
-		if (!$date) {
-			return null;
-		}
+        while (!feof($handle))
+        {
+            $chunk = fread($handle, 8192);
+            $lines += substr_count($chunk, "\n");
+            if ($chunk !== '')
+            {
+                $lastChar = substr($chunk, -1);
+            }
+        }
 
-		return new LogEntryDto(
-			ip: $match[1],
-			datetime: $date,
-			method: $match[3],
-			path: $path,
-			query: $query,
-			status: (int)$match[5],
-			referer: $match[6] === '-' ? null : $match[6],
-			userAgent: $match[7]
-		);
-	}
+        if ($lastChar !== "\n")
+        {
+            $lines++;
+        }
+
+        fclose($handle);
+        return $lines;
+    }
+
+    private function parseLine(string $line): ?LogEntryDto
+    {
+        $match = Strings::match($line, self::LOG_REGEX);
+
+        if (!$match)
+        {
+            return null;
+        }
+
+        // $match indices:
+        // 1: IP
+        // 2: Date [30/May/2025:15:40:26 +0200]
+        // 3: Method
+        // 4: Full Path (URI)
+        // 5: Status
+        // 6: Referer
+        // 7: User Agent
+
+        $fullUrl = $match[4];
+        $parsedUrl = parse_url($fullUrl);
+        $path = $parsedUrl['path'] ?? '';
+        $query = $parsedUrl['query'] ?? null;
+
+        // Filter: Only .php or no extension
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+        if ($extension !== '' && $extension !== 'php')
+        {
+            return null; // Skip assets (css, js, images, etc.)
+        }
+
+        // Parse Date
+        $date = \DateTimeImmutable::createFromFormat('d/M/Y:H:i:s O', $match[2]);
+        if (!$date)
+        {
+            return null;
+        }
+
+        return new LogEntryDto(
+            ip       : $match[1],
+            datetime : $date,
+            method   : $match[3],
+            path     : $path,
+            query    : $query,
+            status   : (int)$match[5],
+            referer  : $match[6] === '-' ? null : $match[6],
+            userAgent: $match[7]
+        );
+    }
 }

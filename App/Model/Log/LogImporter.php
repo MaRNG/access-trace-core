@@ -13,7 +13,7 @@ use Nette\Utils\Strings;
 
 final readonly class LogImporter
 {
-    private const BATCH_SIZE = 100;
+    private const BATCH_SIZE = 500;
 
     // Regex to parse Common Log Format / Combined Log Format
     // Matches: IP, Date, Method, URL, Status, Bytes (ignored), Referer, UA
@@ -83,7 +83,7 @@ final readonly class LogImporter
             if (!$dryRun)
             {
                 // Create Access Log record
-                $accessLog = $this->accessLogRepository->create($projectId, basename($filePath));
+                $accessLog = $this->accessLogRepository->create($projectId, basename($filePath), $totalLines);
                 $accessLogId = $accessLog->id;
             }
 
@@ -132,7 +132,7 @@ final readonly class LogImporter
                             try
                             {
                                 $this->logEntryRepository->insertMany($accessLogId, $buffer);
-                                $this->accessLogRepository->updateStats($accessLogId, $count, $firstTime, $lastTime);
+                                $this->accessLogRepository->updateStats($accessLogId, $count, $processedLines, $firstTime, $lastTime);
                                 $this->database->commit();
                             } catch (\Throwable $e)
                             {
@@ -147,21 +147,21 @@ final readonly class LogImporter
 
             if (!$dryRun)
             {
-                if (count($buffer) > 0)
+                $this->database->beginTransaction();
+                try
                 {
-                    $this->database->beginTransaction();
-                    try
+                    if (count($buffer) > 0)
                     {
                         $this->logEntryRepository->insertMany($accessLogId, $buffer);
-                        $this->accessLogRepository->updateStats($accessLogId, $count, $firstTime, $lastTime);
-                        $this->database->commit();
-                    } catch (\Throwable $e)
-                    {
-                        $this->database->rollBack();
-                        throw $e;
                     }
+                    $this->accessLogRepository->updateStats($accessLogId, $count, $processedLines, $firstTime, $lastTime);
+                    $this->accessLogRepository->markAsProcessed($accessLogId);
+                    $this->database->commit();
+                } catch (\Throwable $e)
+                {
+                    $this->database->rollBack();
+                    throw $e;
                 }
-                $this->accessLogRepository->markAsProcessed($accessLogId);
             }
 
         } catch (\Throwable $e)

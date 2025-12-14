@@ -16,23 +16,26 @@ final readonly class AccessLogRepository
 	) {
 	}
 
-	public function create(int $projectId, string $filename): ActiveRow
+	public function create(int $projectId, string $filename, int $fileLinesCount): ActiveRow
 	{
 		return $this->database->table(self::TABLE)->insert([
 			'project_id' => $projectId,
 			'filename' => $filename,
 			'imported_at' => new \DateTimeImmutable(),
 			'entries_total' => 0,
+			'file_lines_count' => $fileLinesCount,
+			'lines_processed' => 0,
 			'is_processed' => 0,
 		]);
 	}
 
-	public function updateStats(int $id, int $total, ?\DateTimeInterface $from, ?\DateTimeInterface $to): void
+	public function updateStats(int $id, int $entriesTotal, int $linesProcessed, ?\DateTimeInterface $from, ?\DateTimeInterface $to): void
 	{
 		$this->database->table(self::TABLE)
 			->where('id', $id)
 			->update([
-				'entries_total' => $total,
+				'entries_total' => $entriesTotal,
+				'lines_processed' => $linesProcessed,
 				'from_time' => $from,
 				'to_time' => $to,
 			]);

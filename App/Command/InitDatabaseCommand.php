@@ -44,6 +44,8 @@ final class InitDatabaseCommand extends Command
 					from_time DATETIME,
 					to_time DATETIME,
 					entries_total INTEGER DEFAULT 0,
+					file_lines_count INTEGER DEFAULT 0,
+					lines_processed INTEGER DEFAULT 0,
 					is_processed INTEGER DEFAULT 0,
 					FOREIGN KEY (project_id) REFERENCES project(id)
 				)

@@ -19,17 +19,18 @@ final readonly class LogEntryRepository
 
     public function insert(int $accessLogId, LogEntryDto $entry): void
     {
-        $this->database->table(self::TABLE)->insert([
-                                                        'access_log_id' => $accessLogId,
-                                                        'ip' => $entry->ip,
-                                                        'datetime' => $entry->datetime,
-                                                        'method' => $entry->method,
-                                                        'path' => $entry->path,
-                                                        'query' => $entry->query,
-                                                        'status' => $entry->status,
-                                                        'referer' => $entry->referer,
-                                                        'user_agent' => $entry->userAgent,
-                                                    ]);
+        $this->database->query(
+            'INSERT OR IGNORE INTO ' . self::TABLE . ' (access_log_id, ip, datetime, method, path, query, status, referer, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            $accessLogId,
+            $entry->ip,
+            $entry->datetime,
+            $entry->method,
+            $entry->path,
+            $entry->query,
+            $entry->status,
+            $entry->referer,
+            $entry->userAgent
+        );
     }
 
     /**
@@ -37,25 +38,40 @@ final readonly class LogEntryRepository
      */
     public function insertMany(int $accessLogId, array $entries): void
     {
-        $data = [];
-        foreach ($entries as $entry)
+        if (count($entries) === 0)
         {
-            $data[] = [
-                'access_log_id' => $accessLogId,
-                'ip' => $entry->ip,
-                'datetime' => $entry->datetime,
-                'method' => $entry->method,
-                'path' => $entry->path,
-                'query' => $entry->query,
-                'status' => $entry->status,
-                'referer' => $entry->referer,
-                'user_agent' => $entry->userAgent,
-            ];
+            return;
         }
 
-        if (count($data) > 0)
+        // Chunk to avoid SQLite variable limit (default 999 or 32766)
+        // 9 parameters per row. 100 rows = 900 params. Safe.
+        $chunks = array_chunk($entries, 100);
+
+        foreach ($chunks as $chunk)
         {
-            $this->database->table(self::TABLE)->insert($data);
+            $sql = 'INSERT OR IGNORE INTO ' . self::TABLE . ' (access_log_id, ip, datetime, method, path, query, status, referer, user_agent) VALUES ';
+            $params = [];
+            $values = [];
+
+            foreach ($chunk as $entry)
+            {
+                $values[] = '(?, ?, ?, ?, ?, ?, ?, ?, ?)';
+                array_push(
+                    $params,
+                    $accessLogId,
+                    $entry->ip,
+                    $entry->datetime,
+                    $entry->method,
+                    $entry->path,
+                    $entry->query,
+                    $entry->status,
+                    $entry->referer,
+                    $entry->userAgent
+                );
+            }
+
+            $sql .= implode(', ', $values);
+            $this->database->query($sql, ...$params);
         }
     }
 

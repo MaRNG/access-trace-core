@@ -74,6 +74,10 @@ final class InitDatabaseCommand extends Command
 			$this->database->query('CREATE INDEX IF NOT EXISTS idx_log_entry_ip ON log_entry (ip)');
 			$this->database->query('CREATE INDEX IF NOT EXISTS idx_log_entry_datetime ON log_entry (datetime)');
 
+            // Unique indexes to prevent duplicates
+            $this->database->query('CREATE UNIQUE INDEX IF NOT EXISTS idx_access_log_project_filename ON access_log (project_id, filename)');
+            $this->database->query('CREATE UNIQUE INDEX IF NOT EXISTS idx_log_entry_unique ON log_entry (access_log_id, ip, datetime, method, path, query, status, referer, user_agent)');
+
 			$this->database->commit();
 			$output->writeln('<info>Database initialized successfully.</info>');
 			return Command::SUCCESS;

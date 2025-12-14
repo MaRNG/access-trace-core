@@ -7,9 +7,11 @@ namespace App\Api\Controller\V1\Secured;
 use Apitte\Core\Annotation\Controller\Method;
 use Apitte\Core\Annotation\Controller\Path;
 use Apitte\Core\Annotation\Controller\RequestParameter;
+use Apitte\Core\Annotation\Controller\Response;
 use Apitte\Core\Http\ApiRequest;
 use Apitte\Core\Http\ApiResponse;
 use App\Api\Facade\LogEntryFacade;
+use App\Api\Response\LogEntryResponse;
 
 #[Path('/entries')]
 final class LogEntryController extends BaseSecuredV1Controller
@@ -27,6 +29,7 @@ final class LogEntryController extends BaseSecuredV1Controller
     #[RequestParameter(name: 'projectId', type: 'int', in: 'query', required: false)]
     #[RequestParameter(name: 'accessLogId', type: 'int', in: 'query', required: false)]
     #[RequestParameter(name: 'detailed', type: 'string', in: 'query', required: false)]
+    #[Response(description: 'List of log entries', entity: LogEntryResponse::class . '[]')]
     public function index(ApiRequest $request, ApiResponse $response): ApiResponse
     {
         $fromStr = $request->getParameter('from');
@@ -48,6 +51,11 @@ final class LogEntryController extends BaseSecuredV1Controller
         $accessLogIdInt = $accessLogId !== null ? (int)$accessLogId : null;
         $isDetailed = filter_var($detailed, FILTER_VALIDATE_BOOLEAN);
 
-        return $response->writeJsonBody($this->logEntryFacade->getEntriesByTimeRange($from, $to, $projectIdInt, $accessLogIdInt, $isDetailed));
+        $data = array_map(
+            fn(array $item) => LogEntryResponse::fromArray($item),
+            $this->logEntryFacade->getEntriesByTimeRange($from, $to, $projectIdInt, $accessLogIdInt, $isDetailed)
+        );
+
+        return $response->writeJsonBody($data);
     }
 }

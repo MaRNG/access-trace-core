@@ -79,7 +79,7 @@ final readonly class LogEntryRepository
     {
         $selection = $this->database->table(self::TABLE)
             ->where('ip', $ip)
-            ->order('datetime DESC');
+            ->order('datetime ASC');
 
         if ($projectId !== null)
         {
@@ -99,7 +99,7 @@ final readonly class LogEntryRepository
         $selection = $this->database->table(self::TABLE)
             ->where('datetime >= ?', $from)
             ->where('datetime <= ?', $to)
-            ->order('datetime DESC');
+            ->order('datetime ASC');
 
         if ($projectId !== null)
         {

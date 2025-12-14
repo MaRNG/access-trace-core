@@ -11,6 +11,10 @@ search:
         classes:
             - *Controller
     -
+        in: %appDir%/Api/Facade
+        classes:
+            - *Facade
+    -
         in: %appDir%/Command
         classes:
             - *Command

@@ -49,4 +49,9 @@ final readonly class AccessLogRepository
 				'is_processed' => 1,
 			]);
 	}
+
+    public function findAll(): array
+    {
+        return $this->database->table(self::TABLE)->order('imported_at DESC')->fetchAll();
+    }
 }

@@ -7,12 +7,12 @@ namespace App\Model\Database\Repository;
 use Nette\Database\Explorer;
 use Nette\Database\Table\ActiveRow;
 
-final class ProjectRepository
+final readonly class ProjectRepository
 {
     private const TABLE = 'project';
 
     public function __construct(
-        private readonly Explorer $database
+        private Explorer $database
     )
     {
     }
@@ -22,6 +22,16 @@ final class ProjectRepository
         return $this->database->table(self::TABLE)
             ->where('name', $name)
             ->fetch();
+    }
+
+    public function getById(int $id): ?ActiveRow
+    {
+        return $this->database->table(self::TABLE)->get($id);
+    }
+
+    public function findAll(): array
+    {
+        return $this->database->table(self::TABLE)->fetchAll();
     }
 
     public function create(string $name): ActiveRow

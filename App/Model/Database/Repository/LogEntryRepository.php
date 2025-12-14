@@ -58,4 +58,12 @@ final readonly class LogEntryRepository
             $this->database->table(self::TABLE)->insert($data);
         }
     }
+
+    public function findByIp(string $ip): array
+    {
+        return $this->database->table(self::TABLE)
+            ->where('ip', $ip)
+            ->order('datetime DESC')
+            ->fetchAll();
+    }
 }

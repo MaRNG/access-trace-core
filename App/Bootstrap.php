@@ -28,7 +28,7 @@ class Bootstrap
 		$configurator->addConfig(__DIR__ . '/../config/config.neon');
 		$configurator->addConfig(__DIR__ . '/../config/local.neon');
 
-        if (str_contains($_SERVER['HTTP_HOST'], '.localhost'))
+        if ($_SERVER['HTTP_HOST'] && str_contains($_SERVER['HTTP_HOST'], '.localhost'))
         {
             $configurator->setDebugMode(true);
         }

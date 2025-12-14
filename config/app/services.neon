@@ -1,7 +1,16 @@
 services:
+    - App\Model\Log\LogImporter
 
 search:
     -
         in: %appDir%/Api/Controller
         classes:
             - *Controller
+    -
+        in: %appDir%/Command
+        classes:
+            - *Command
+    -
+        in: %appDir%/Model/Database/Repository
+        classes:
+            - *Repository

@@ -81,6 +81,9 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/var-exporter" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/yaml" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/tracy/tracy" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/contributte/database" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/nette/caching" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/nette/database" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

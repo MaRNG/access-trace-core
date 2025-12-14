@@ -9,7 +9,7 @@ includes:
 	- ext/contributte.neon
 
 database:
-    dsn: "sqlite:%appDir/../database/sqlite/main.db"
+    dsn: "sqlite:%rootDir%/database/sqlite/main.db"
     user: "admin"
     password: "admin"
 

@@ -8,7 +8,7 @@ use Apitte\Core\Annotation\Controller\Method;
 use Apitte\Core\Annotation\Controller\Path;
 use Apitte\Core\Http\ApiRequest;
 use Apitte\Core\Http\ApiResponse;
-use App\Model\Facade\ProjectFacade;
+use App\Api\Facade\ProjectFacade;
 
 #[Path('/projects')]
 final class ProjectController extends BaseSecuredV1Controller

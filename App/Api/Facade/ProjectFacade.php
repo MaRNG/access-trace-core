@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Model\Facade;
+namespace App\Api\Facade;
 
 use App\Model\Database\Repository\ProjectRepository;
 

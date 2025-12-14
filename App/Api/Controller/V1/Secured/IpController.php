@@ -9,7 +9,7 @@ use Apitte\Core\Annotation\Controller\Path;
 use Apitte\Core\Annotation\Controller\RequestParameter;
 use Apitte\Core\Http\ApiRequest;
 use Apitte\Core\Http\ApiResponse;
-use App\Model\Facade\IpFacade;
+use App\Api\Facade\IpFacade;
 
 #[Path('/ips')]
 final class IpController extends BaseSecuredV1Controller
@@ -22,6 +22,7 @@ final class IpController extends BaseSecuredV1Controller
 
     #[Path('/{ip}/activity')]
     #[Method('GET')]
+    #[RequestParameter(name: 'ip', type: 'string', in: 'path', required: true)]
     #[RequestParameter(name: 'detailed', type: 'string', in: 'query', required: false)]
     public function activity(ApiRequest $request, ApiResponse $response): ApiResponse
     {

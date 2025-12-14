@@ -8,7 +8,7 @@ use Apitte\Core\Annotation\Controller\Method;
 use Apitte\Core\Annotation\Controller\Path;
 use Apitte\Core\Http\ApiRequest;
 use Apitte\Core\Http\ApiResponse;
-use App\Model\Facade\ImportFacade;
+use App\Api\Facade\ImportFacade;
 
 #[Path('/imports')]
 final class ImportController extends BaseSecuredV1Controller

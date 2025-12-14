@@ -59,11 +59,42 @@ final readonly class LogEntryRepository
         }
     }
 
-    public function findByIp(string $ip): array
+    public function findByIp(string $ip, ?int $projectId = null, ?int $accessLogId = null): array
     {
-        return $this->database->table(self::TABLE)
+        $selection = $this->database->table(self::TABLE)
             ->where('ip', $ip)
-            ->order('datetime DESC')
-            ->fetchAll();
+            ->order('datetime DESC');
+
+        if ($projectId !== null)
+        {
+            $selection->where('access_log.project_id', $projectId);
+        }
+
+        if ($accessLogId !== null)
+        {
+            $selection->where('access_log_id', $accessLogId);
+        }
+
+        return $selection->fetchAll();
+    }
+
+    public function findByTimeRange(\DateTimeInterface $from, \DateTimeInterface $to, ?int $projectId = null, ?int $accessLogId = null): array
+    {
+        $selection = $this->database->table(self::TABLE)
+            ->where('datetime >= ?', $from)
+            ->where('datetime <= ?', $to)
+            ->order('datetime DESC');
+
+        if ($projectId !== null)
+        {
+            $selection->where('access_log.project_id', $projectId);
+        }
+
+        if ($accessLogId !== null)
+        {
+            $selection->where('access_log_id', $accessLogId);
+        }
+
+        return $selection->fetchAll();
     }
 }

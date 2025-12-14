@@ -6,7 +6,7 @@ namespace App\Api\Facade;
 
 use App\Model\Database\Repository\LogEntryRepository;
 
-final readonly class IpFacade
+final readonly class LogEntryFacade
 {
     public function __construct(
         private LogEntryRepository $logEntryRepository
@@ -14,14 +14,15 @@ final readonly class IpFacade
     {
     }
 
-    public function getActivity(string $ip, bool $detailed = false, ?int $projectId = null, ?int $accessLogId = null): array
+    public function getEntriesByTimeRange(\DateTimeInterface $from, \DateTimeInterface $to, ?int $projectId = null, ?int $accessLogId = null, bool $detailed = false): array
     {
-        $rows = $this->logEntryRepository->findByIp($ip, $projectId, $accessLogId);
+        $rows = $this->logEntryRepository->findByTimeRange($from, $to, $projectId, $accessLogId);
 
         return array_map(function ($row) use ($detailed)
         {
             $data = [
                 'access_log_id' => $row->access_log_id,
+                'ip' => $row->ip,
                 'datetime' => $row->datetime,
                 'method' => $row->method,
                 'path' => $row->path,

@@ -24,12 +24,19 @@ final class IpController extends BaseSecuredV1Controller
     #[Method('GET')]
     #[RequestParameter(name: 'ip', type: 'string', in: 'path', required: true)]
     #[RequestParameter(name: 'detailed', type: 'string', in: 'query', required: false)]
+    #[RequestParameter(name: 'projectId', type: 'int', in: 'query', required: false)]
+    #[RequestParameter(name: 'accessLogId', type: 'int', in: 'query', required: false)]
     public function activity(ApiRequest $request, ApiResponse $response): ApiResponse
     {
         $ip = $request->getParameter('ip');
         $detailed = $request->getParameter('detailed', false);
-        $isDetailed = filter_var($detailed, FILTER_VALIDATE_BOOLEAN);
+        $projectId = $request->getParameter('projectId');
+        $accessLogId = $request->getParameter('accessLogId');
 
-        return $response->writeJsonBody($this->ipFacade->getActivity($ip, $isDetailed));
+        $isDetailed = filter_var($detailed, FILTER_VALIDATE_BOOLEAN);
+        $projectIdInt = $projectId !== null ? (int)$projectId : null;
+        $accessLogIdInt = $accessLogId !== null ? (int)$accessLogId : null;
+
+        return $response->writeJsonBody($this->ipFacade->getActivity($ip, $isDetailed, $projectIdInt, $accessLogIdInt));
     }
 }
